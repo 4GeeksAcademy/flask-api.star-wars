@@ -1,4 +1,77 @@
-from flask import jsonify, url_for
+from flask import jsonify, url_for, Blueprint, jsonify, request
+from models import db, User, People, Planet, Favorite
+
+api = Blueprint('api', __name__)
+
+@api.route('/people', methods=['GET'])
+def get_people():
+    people = People.query.all()
+    return jsonify([{'id': p.id, 'name': p.name} for p in people]), 200
+
+@api.route('/people/<int:people_id>', methods=['GET'])
+def get_person(people_id):
+    person = People.query.get_or_404(people_id)
+    return jsonify({'id': person.id, 'name': person.name}), 200
+
+@api.route('/planets', methods=['GET'])
+def get_planets():
+    planets = Planet.query.all()
+    return jsonify([{'id': p.id, 'name': p.name} for p in planets]), 200
+
+@api.route('/planets/<int:planet_id>', methods=['GET'])
+def get_planet(planet_id):
+    planet = Planet.query.get_or_404(planet_id)
+    return jsonify({'id': planet.id, 'name': planet.name}), 200
+
+@api.route('/users', methods=['GET'])
+def get_users():
+    users = User.query.all()
+    return jsonify([{'id': u.id, 'username': u.username} for u in users]), 200
+
+@api.route('/users/favorites', methods=['GET'])
+def get_user_favorites():
+    user = User.query.first()
+    favorites = Favorite.query.filter_by(user_id=user.id).all()
+    result = []
+    for f in favorites:
+        if f.people_id:
+            result.append({'type': 'people', 'id': f.people_id})
+        if f.planet_id:
+            result.append({'type': 'planet', 'id': f.planet_id})
+    return jsonify(result), 200
+
+@api.route('/favorite/planet/<int:planet_id>', methods=['POST'])
+def add_favorite_planet(planet_id):
+    user = User.query.first()
+    favorite = Favorite(user_id=user.id, planet_id=planet_id)
+    db.session.add(favorite)
+    db.session.commit()
+    return jsonify({'msg': 'Favorite planet added'}), 201
+
+@api.route('/favorite/people/<int:people_id>', methods=['POST'])
+def add_favorite_people(people_id):
+    user = User.query.first()
+    favorite = Favorite(user_id=user.id, people_id=people_id)
+    db.session.add(favorite)
+    db.session.commit()
+    return jsonify({'msg': 'Favorite people added'}), 201
+
+@api.route('/favorite/planet/<int:planet_id>', methods=['DELETE'])
+def delete_favorite_planet(planet_id):
+    user = User.query.first()
+    favorite = Favorite.query.filter_by(user_id=user.id, planet_id=planet_id).first_or_404()
+    db.session.delete(favorite)
+    db.session.commit()
+    return jsonify({'msg': 'Favorite planet deleted'}), 200
+
+@api.route('/favorite/people/<int:people_id>', methods=['DELETE'])
+def delete_favorite_people(people_id):
+    user = User.query.first()
+    favorite = Favorite.query.filter_by(user_id=user.id, people_id=people_id).first_or_404()
+    db.session.delete(favorite)
+    db.session.commit()
+    return jsonify({'msg': 'Favorite people deleted'}), 200
+
 
 class APIException(Exception):
     status_code = 400
